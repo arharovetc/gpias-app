@@ -1,0 +1,19 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//GPiAS//Calendar//RU
+CALSCALE:GREGORIAN
+BEGIN:VEVENT
+UID:demo-guga-20261127@gpias
+DTSTAMP:20261116T120000Z
+DTSTART;TZID=Europe/Moscow:20261127T123000
+DTEND;TZID=Europe/Moscow:20261127T170000
+SUMMARY:ГУГА — ярмарка вакансий, стенд
+LOCATION:Санкт-Петербург, ул. Пилотов, 38
+DESCRIPTION:Поездка из реестра ГПиАС. Открыть приложение: https://t.me/gpias_bot?startapp
+BEGIN:VALARM
+TRIGGER:-PT15H
+ACTION:DISPLAY
+DESCRIPTION:Завтра поездка в ГУГА
+END:VALARM
+END:VEVENT
+END:VCALENDAR

@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <title>ГПиАС · Лаборатория</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    #view { padding-bottom: 40px; }
+    .lab { display: grid; gap: 10px; }
+    .lab .card { padding: 14px; display: grid; gap: 8px; }
+    .lab h3 { margin: 0; font-size: 16px; }
+    .lab p { margin: 0; font-size: 13px; color: var(--hint); }
+    .lab .row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .lab .row .btn { width: auto; flex: 1; min-width: 120px; padding: 10px; font-size: 14px; background: var(--soft); }
+    .lab .row .btn.primary { background: var(--accent); }
+    .badge { font-size: 11px; color: var(--hint); font-weight: 400; }
+    .no { opacity: .45; }
+    .out { font: 12px/1.4 ui-monospace, monospace; color: var(--hint); white-space: pre-wrap; overflow-wrap: anywhere; }
+    .hero { padding: 6px 4px 12px; }
+    .hero h1 { margin: 0 0 4px; font-size: 22px; }
+  </style>
+</head>
+<body>
+  <main id="view">
+    <div class="hero">
+      <h1>🧪 Лаборатория</h1>
+      <p class="badge" id="info"></p>
+    </div>
+    <div class="lab" id="lab"></div>
+  </main>
+  <div id="toast" class="toast" hidden></div>
+
+<script>
+'use strict';
+// Песочница новых возможностей Telegram Mini Apps: попробовать и решить, что взять в приложение.
+const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();
+document.documentElement.dataset.scheme = tg.colorScheme;
+const can = v => tg.isVersionAtLeast(v);
+document.getElementById('info').textContent =
+  `Telegram ${tg.platform}, Bot API ${tg.version}${tg.initDataUnsafe.user ? ` · ${tg.initDataUnsafe.user.first_name}` : ''}`;
+
+function toast(text) {
+  const el = document.getElementById('toast');
+  el.textContent = text;
+  el.hidden = false;
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => { el.hidden = true; }, 2600);
+}
+
+// Карточки: [версия API, заголовок, зачем это нам, [[подпись, действие], ...]]
+const EXPERIMENTS = [
+  ['8.0', '⛶ Полный экран', 'Календарь без шапки Telegram — больше места под месяц.', [
+    ['Во весь экран', () => tg.requestFullscreen()],
+    ['Обычный', () => tg.exitFullscreen()],
+  ]],
+  ['8.0', '📲 Иконка на экране телефона', 'Открывать календарь с рабочего стола, как обычное приложение.', [
+    ['Добавить иконку', () => tg.addToHomeScreen()],
+    ['Проверить', () => tg.checkHomeScreenStatus(s => toast(`Статус: ${s}`))],
+  ]],
+  ['7.10', '🔘 Нативные кнопки снизу', 'Вместо наших кнопок «Сохранить» — системные Telegram: под пальцем, не прыгают с клавиатурой.', [
+    ['Показать две', () => {
+      tg.MainButton.setParams({ text: 'Сохранить встречу', has_shine_effect: true, is_visible: true });
+      tg.SecondaryButton.setParams({ text: 'Отмена', position: 'left', is_visible: true });
+    }],
+    ['Спрятать', () => { tg.MainButton.hide(); tg.SecondaryButton.hide(); }],
+  ]],
+  ['8.0', '📅 В календарь телефона', 'Скачать встречу файлом .ics — телефон сам предложит добавить её в свой календарь с напоминанием.', [
+    ['Скачать пример', () => tg.downloadFile({
+      url: new URL('demo.ics', location.href).href, file_name: 'ГУГА-27-11.ics',
+    }, ok => toast(ok ? 'Скачивание началось' : 'Отменено'))],
+  ]],
+  ['6.9', '✉️ Разрешить боту писать в личку', 'Чтобы присылать каждому лично: «тебе назначили задачу», «завтра твоя поездка».', [
+    ['Разрешить', () => tg.requestWriteAccess(ok => toast(ok ? 'Бот может писать в личку' : 'Не разрешили'))],
+  ]],
+  ['6.1', '💬 Всплывающие окна', 'Нативные диалоги Telegram вместо браузерных.', [
+    ['Попап с вариантами', () => tg.showPopup({
+      title: 'Поездка ГУГА, 27.11', message: 'Ты едешь?',
+      buttons: [{ id: 'yes', type: 'default', text: 'Еду' }, { id: 'no', type: 'destructive', text: 'Не смогу' }, { type: 'cancel' }],
+    }, id => toast(id ? `Ответ: ${id}` : 'Закрыли'))],
+  ]],
+  ['6.4', '📷 Сканер QR', 'Например, отметка «я на месте» по QR на стенде или быстрый ввод ссылки.', [
+    ['Сканировать', () => tg.showScanQrPopup({ text: 'Наведи на QR-код' }, text => {
+      tg.closeScanQrPopup();
+      toast(`QR: ${text}`);
+      return true;
+    })],
+  ]],
+  ['6.1', '📳 Вибрация', 'Лёгкий отклик на галочки и сохранение — уже стоит в приложении, тут можно сравнить варианты.', [
+    ['Лёгкая', () => tg.HapticFeedback.impactOccurred('light')],
+    ['Сильная', () => tg.HapticFeedback.impactOccurred('heavy')],
+    ['Успех', () => tg.HapticFeedback.notificationOccurred('success')],
+    ['Ошибка', () => tg.HapticFeedback.notificationOccurred('error')],
+  ]],
+  ['6.9', '☁️ Облачная память', 'Приложение запоминает твои настройки (вкладку, «Только мои») на всех устройствах.', [
+    ['Запомнить сейчас', () => tg.CloudStorage.setItem('lab', new Date().toLocaleString('ru'), () => toast('Сохранено в облако Telegram'))],
+    ['Прочитать', () => tg.CloudStorage.getItem('lab', (e, v) => toast(v ? `Сохранено: ${v}` : 'Пусто'))],
+  ]],
+  ['8.0', '📍 Геолокация', 'Сколько ехать до места поездки, отметка «я на стенде».', [
+    ['Где я?', () => tg.LocationManager.init(() => {
+      if (!tg.LocationManager.isLocationAvailable) return toast('Геолокация недоступна');
+      tg.LocationManager.getLocation(loc => toast(loc ? `${loc.latitude.toFixed(4)}, ${loc.longitude.toFixed(4)}` : 'Не разрешили'));
+    })],
+  ]],
+  ['7.0', '⚙️ Кнопка «Настройки» в меню ⋯', 'Пункт в меню мини-приложения — туда можно убрать настройки уведомлений.', [
+    ['Показать', () => { tg.SettingsButton.show(); toast('Открой меню ⋯ сверху'); }],
+  ]],
+  ['6.1', '🎨 Цвет шапки', 'Шапка в цвет ГПиАС.', [
+    ['Синяя', () => tg.setHeaderColor('#2f7fd8')],
+    ['Как тема', () => tg.setHeaderColor('bg_color')],
+  ]],
+];
+
+document.getElementById('lab').innerHTML = EXPERIMENTS.map(([ver, title, why, actions], i) => `
+  <div class="card ${can(ver) ? '' : 'no'}">
+    <h3>${title} <span class="badge">${can(ver) ? '' : `нужен Telegram новее (API ${ver})`}</span></h3>
+    <p>${why}</p>
+    <div class="row">${actions.map(([label], j) =>
+      `<button class="btn ${j === 0 ? 'primary' : ''}" data-i="${i}" data-j="${j}" ${can(ver) ? '' : 'disabled'}>${label}</button>`).join('')}</div>
+  </div>`).join('');
+
+document.getElementById('lab').addEventListener('click', e => {
+  const b = e.target.closest('button[data-i]');
+  if (!b) return;
+  try {
+    EXPERIMENTS[b.dataset.i][3][b.dataset.j][1]();
+  } catch (err) {
+    toast(err.message);
+  }
+});
+tg.MainButton.onClick(() => { tg.HapticFeedback.notificationOccurred('success'); toast('Нажата главная кнопка'); });
+tg.SecondaryButton.onClick(() => { tg.MainButton.hide(); tg.SecondaryButton.hide(); });
+tg.SettingsButton.onClick(() => tg.showAlert('Тут будут настройки уведомлений'));
+</script>
+</body>
+</html>
