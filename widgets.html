@@ -1,0 +1,208 @@
+<!doctype html><html lang=ru><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>Виджеты ГПиАС — превью</title><script src="https://telegram.org/js/telegram-web-app.js"></script><style>body{margin:0;padding:12px;background:#8fb5a3;font:15px -apple-system,Roboto,sans-serif}h1{font-size:17px;color:#fff;text-shadow:0 1px 2px #0004;margin:4px 4px 12px}.msg{max-width:380px;background:#fff;border-radius:16px 16px 16px 4px;margin:0 0 14px;overflow:hidden;box-shadow:0 1px 2px #0002}iframe{display:block;width:100%;border:0;height:200px}.cap{padding:6px 12px 9px;font-size:14px}.t{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#000c;color:#fff;padding:8px 14px;border-radius:10px;font-size:14px;display:none}</style></head><body><h1>🆕 Так виджеты будут выглядеть в чате с ботом</h1><div class="msg"><iframe srcdoc="<!doctype html><meta charset=utf-8><style>:root{--tg-theme-bg-color:#fff;--tg-theme-text-color:#15181d;--tg-theme-hint-color:#8a9099;--tg-theme-button-color:#2f7fd8;--tg-theme-button-text-color:#fff;--tg-theme-secondary-bg-color:#eef1f5;--tg-theme-section-separator-color:#e3e6ea;--tg-theme-destructive-text-color:#e5484d}body{font:15px/1.35 -apple-system,Roboto,sans-serif;color:var(--tg-theme-text-color);margin:8px 12px}button{font:inherit;font-size:14px;font-weight:600;border:0;border-radius:10px;padding:9px 10px;background:var(--tg-theme-secondary-bg-color);color:var(--tg-theme-button-color)}</style><script>(function(){var P=window.parent.Telegram&amp;&amp;window.parent.Telegram.WebApp;var H=P&amp;&amp;P.HapticFeedback;var noop=function(){return this};window.TelegramWidget={chatData:&quot;{\&quot;title\&quot;:\&quot;Неделя 16–22 ноября\&quot;,\&quot;start\&quot;:\&quot;2026-11-16\&quot;,\&quot;days\&quot;:[[[\&quot;k\&quot;,\&quot;\&quot;,\&quot;Срок: обновить реестр\&quot;]],[[\&quot;m\&quot;,\&quot;18:00\&quot;,\&quot;Планёрка амбассадоров\&quot;]],[[\&quot;k\&quot;,\&quot;\&quot;,\&quot;Срок: заказать мерч\&quot;]],[[\&quot;t\&quot;,\&quot;\&quot;,\&quot;ГУАП — ярмарка вакансий\&quot;],[\&quot;m\&quot;,\&quot;16:00\&quot;,\&quot;Созвон по мерчу\&quot;]],[[\&quot;m\&quot;,\&quot;11:00\&quot;,\&quot;Созвон с ментором\&quot;]],[],[]]}&quot;,publicData:null,colorScheme:&quot;light&quot;,onEvent:function(){},offEvent:function(){},ready:function(){},HapticFeedback:{impactOccurred:function(s){H&amp;&amp;H.impactOccurred(s);return this},notificationOccurred:function(s){H&amp;&amp;H.notificationOccurred(s);return this},selectionChanged:function(){H&amp;&amp;H.selectionChanged();return this}},copyText:function(t){window.parent.postMessage({copy:t},&quot;*&quot;)},openLink:function(u){P?P.openLink(u):window.open(u)},openTelegramLink:function(u){P?P.openTelegramLink(u):window.open(u)}};})();</script><!-- Виджет «Неделя»: полоса из 7 дней, по тапу — события дня. Данные — chat_data от бота. -->
+<style>
+  body { margin: 0; padding: 10px 12px max(10px, env(safe-area-inset-bottom)); }
+  h3 { margin: 0 0 8px; font-size: 15px; }
+  .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .d { display: grid; justify-items: center; gap: 2px; padding: 6px 0; border-radius: 10px; background: none; color: var(--tg-theme-text-color); font-size: 13px; }
+  .d small { font-size: 10px; color: var(--tg-theme-hint-color); }
+  .d.on { background: var(--tg-theme-button-color); color: var(--tg-theme-button-text-color); }
+  .d.on small { color: inherit; opacity: .8; }
+  .dots { display: flex; gap: 2px; height: 5px; }
+  .dots i { width: 5px; height: 5px; border-radius: 50%; }
+  .t { background: #3b82f6; } .m { background: #1f9d55; } .k { background: #e8890c; }
+  .list { margin-top: 10px; display: grid; gap: 6px; min-height: 64px; }
+  .ev { display: flex; gap: 10px; padding: 8px 10px; border-radius: 10px; background: var(--tg-theme-secondary-bg-color); font-size: 14px; }
+  .ev b { min-width: 42px; font-weight: 600; color: var(--tg-theme-hint-color); }
+  .empty { color: var(--tg-theme-hint-color); font-size: 14px; padding: 8px 2px; }
+  .open { width: 100%; margin-top: 10px; }
+</style>
+<h3 id=&quot;title&quot;>Неделя</h3>
+<div class=&quot;days&quot; id=&quot;days&quot;></div>
+<div class=&quot;list&quot; id=&quot;list&quot;></div>
+<button class=&quot;open&quot; id=&quot;open&quot;>📅 Открыть календарь</button>
+<script>
+  const W = window.TelegramWidget;
+  const WD = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+  let data = { start: '2026-11-16', days: [] };
+  let sel = 0;
+  function parse() { try { data = JSON.parse(W.chatData) || data; } catch (e) {} }
+  function render() {
+    const s = new Date(data.start + 'T00:00:00');
+    document.getElementById('title').textContent = data.title || 'Неделя';
+    document.getElementById('days').innerHTML = [0, 1, 2, 3, 4, 5, 6].map(i => {
+      const d = new Date(s.getTime() + i * 864e5);
+      const evs = data.days[i] || [];
+      return `<button class=&quot;d ${i === sel ? 'on' : ''}&quot; data-i=&quot;${i}&quot;><small>${WD[d.getDay()]}</small>${d.getDate()}` +
+        `<span class=&quot;dots&quot;>${evs.slice(0, 3).map(e => `<i class=&quot;${e[0]}&quot;></i>`).join('')}</span></button>`;
+    }).join('');
+    const evs = data.days[sel] || [];
+    document.getElementById('list').innerHTML = evs.length
+      ? evs.map(e => `<div class=&quot;ev&quot;><b>${e[1] || '—'}</b><span>${e[2]}</span></div>`).join('')
+      : '<div class=&quot;empty&quot;>Свободный день 🙌</div>';
+  }
+  document.getElementById('days').addEventListener('click', e => {
+    const b = e.target.closest('[data-i]');
+    if (!b) return;
+    sel = Number(b.dataset.i);
+    W.HapticFeedback.selectionChanged();
+    render();
+  });
+  document.getElementById('open').addEventListener('click', () => W.openTelegramLink('https://t.me/gpias_bot?startapp'));
+  W.onEvent('chatDataChanged', () => { parse(); render(); });
+  parse();
+  render();
+  W.ready();
+</script>
+" onload="fit(this)"></iframe><div class="cap">W1. Неделя — тапни по дню</div></div><div class="msg"><iframe srcdoc="<!doctype html><meta charset=utf-8><style>:root{--tg-theme-bg-color:#fff;--tg-theme-text-color:#15181d;--tg-theme-hint-color:#8a9099;--tg-theme-button-color:#2f7fd8;--tg-theme-button-text-color:#fff;--tg-theme-secondary-bg-color:#eef1f5;--tg-theme-section-separator-color:#e3e6ea;--tg-theme-destructive-text-color:#e5484d}body{font:15px/1.35 -apple-system,Roboto,sans-serif;color:var(--tg-theme-text-color);margin:8px 12px}button{font:inherit;font-size:14px;font-weight:600;border:0;border-radius:10px;padding:9px 10px;background:var(--tg-theme-secondary-bg-color);color:var(--tg-theme-button-color)}</style><script>(function(){var P=window.parent.Telegram&amp;&amp;window.parent.Telegram.WebApp;var H=P&amp;&amp;P.HapticFeedback;var noop=function(){return this};window.TelegramWidget={chatData:&quot;{\&quot;title\&quot;:\&quot;ГУГА — ярмарка вакансий\&quot;,\&quot;when\&quot;:\&quot;пт 27.11, 12:30–17:00\&quot;,\&quot;format\&quot;:\&quot;стенд\&quot;,\&quot;at\&quot;:1795771800,\&quot;sent\&quot;:1794819600,\&quot;people\&quot;:[\&quot;Кирилл\&quot;,\&quot;Катя\&quot;,\&quot;Керим\&quot;],\&quot;address\&quot;:\&quot;Санкт-Петербург, ул. Пилотов, 38\&quot;}&quot;,publicData:null,colorScheme:&quot;light&quot;,onEvent:function(){},offEvent:function(){},ready:function(){},HapticFeedback:{impactOccurred:function(s){H&amp;&amp;H.impactOccurred(s);return this},notificationOccurred:function(s){H&amp;&amp;H.notificationOccurred(s);return this},selectionChanged:function(){H&amp;&amp;H.selectionChanged();return this}},copyText:function(t){window.parent.postMessage({copy:t},&quot;*&quot;)},openLink:function(u){P?P.openLink(u):window.open(u)},openTelegramLink:function(u){P?P.openTelegramLink(u):window.open(u)}};})();</script><!-- Виджет «Поездка»: живой обратный отсчёт, участники, адрес и маршрут в один тап. Данные — chat_data. -->
+<style>
+  body { margin: 0; padding: 12px 12px max(12px, env(safe-area-inset-bottom)); }
+  .tag { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 12px; font-weight: 600; color: #3b82f6; background: rgba(59,130,246,.14); }
+  h3 { margin: 6px 0 2px; font-size: 18px; }
+  .sub { color: var(--tg-theme-hint-color); font-size: 13px; }
+  .count { display: flex; gap: 6px; margin: 12px 0 6px; }
+  .count div { flex: 1; text-align: center; padding: 8px 0; border-radius: 12px; background: var(--tg-theme-secondary-bg-color); }
+  .count b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+  .count small { font-size: 11px; color: var(--tg-theme-hint-color); }
+  .bar { height: 6px; border-radius: 3px; background: var(--tg-theme-secondary-bg-color); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: #3b82f6; transition: width .6s; }
+  .people { display: flex; align-items: center; gap: 6px; margin: 12px 0; font-size: 14px; }
+  .ava { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 11px; font-weight: 700; margin-left: -8px; border: 2px solid var(--tg-theme-bg-color); }
+  .ava:first-child { margin-left: 0; }
+  .row { display: flex; gap: 6px; }
+  .row button { flex: 1; }
+</style>
+<span class=&quot;tag&quot;>Поездка</span>
+<h3 id=&quot;title&quot;></h3>
+<div class=&quot;sub&quot; id=&quot;sub&quot;></div>
+<div class=&quot;count&quot; id=&quot;count&quot;></div>
+<div class=&quot;bar&quot;><i id=&quot;bar&quot;></i></div>
+<div class=&quot;people&quot; id=&quot;people&quot;></div>
+<div class=&quot;row&quot;>
+  <button id=&quot;copy&quot;>📍 Адрес</button>
+  <button id=&quot;route&quot;>🗺 Маршрут</button>
+</div>
+<script>
+  const W = window.TelegramWidget;
+  const COLORS = ['#e17076', '#7bc862', '#65aadd', '#a695e7', '#ee7aae', '#faa774'];
+  let t = {};
+  function parse() { try { t = JSON.parse(W.chatData) || {}; } catch (e) {} }
+  function render() {
+    document.getElementById('title').textContent = t.title || '';
+    document.getElementById('sub').textContent = [t.when, t.format].filter(Boolean).join(' · ');
+    document.getElementById('people').innerHTML =
+      `<span style=&quot;display:flex&quot;>${(t.people || []).map((n, i) => `<span class=&quot;ava&quot; style=&quot;background:${COLORS[i % 6]}&quot;>${n[0]}</span>`).join('')}</span>` +
+      `<span>${(t.people || []).join(', ') || 'Участники не указаны'}</span>`;
+    tick();
+  }
+  function tick() {
+    const left = Math.max(0, t.at * 1000 - Date.now());
+    const d = Math.floor(left / 864e5), h = Math.floor(left / 36e5) % 24, m = Math.floor(left / 6e4) % 60;
+    document.getElementById('count').innerHTML = left
+      ? [[d, 'дн'], [h, 'ч'], [m, 'мин']].map(([v, u]) => `<div><b>${v}</b><small>${u}</small></div>`).join('')
+      : '<div><b>🚀</b><small>Уже началось</small></div>';
+    // Полоска: сколько прошло от момента отправки до поездки
+    const total = t.at * 1000 - (t.sent || 0) * 1000;
+    document.getElementById('bar').style.width = total > 0 ? `${Math.min(100, 100 - left / total * 100)}%` : '100%';
+  }
+  document.getElementById('copy').addEventListener('click', () => { W.copyText(t.address || ''); W.HapticFeedback.notificationOccurred('success'); });
+  document.getElementById('route').addEventListener('click', () => W.openLink('https://yandex.ru/maps/?text=' + encodeURIComponent(t.address || '')));
+  W.onEvent('chatDataChanged', () => { parse(); render(); });
+  parse();
+  render();
+  setInterval(tick, 20000);
+  W.ready();
+</script>
+" onload="fit(this)"></iframe><div class="cap">W2. Поездка — отсчёт идёт сам</div></div><div class="msg"><iframe srcdoc="<!doctype html><meta charset=utf-8><style>:root{--tg-theme-bg-color:#fff;--tg-theme-text-color:#15181d;--tg-theme-hint-color:#8a9099;--tg-theme-button-color:#2f7fd8;--tg-theme-button-text-color:#fff;--tg-theme-secondary-bg-color:#eef1f5;--tg-theme-section-separator-color:#e3e6ea;--tg-theme-destructive-text-color:#e5484d}body{font:15px/1.35 -apple-system,Roboto,sans-serif;color:var(--tg-theme-text-color);margin:8px 12px}button{font:inherit;font-size:14px;font-weight:600;border:0;border-radius:10px;padding:9px 10px;background:var(--tg-theme-secondary-bg-color);color:var(--tg-theme-button-color)}</style><script>(function(){var P=window.parent.Telegram&amp;&amp;window.parent.Telegram.WebApp;var H=P&amp;&amp;P.HapticFeedback;var noop=function(){return this};window.TelegramWidget={chatData:&quot;[[\&quot;Обновить реестр поездок\&quot;,\&quot;просрочено\&quot;,\&quot;late\&quot;],[\&quot;Заказать мерч на ГУАП\&quot;,\&quot;завтра\&quot;,\&quot;soon\&quot;],[\&quot;Фотоотчёт с МБИ\&quot;,\&quot;до 20.11\&quot;],[\&quot;Пост про СПБГИК\&quot;,\&quot;до 24.11\&quot;]]&quot;,publicData:null,colorScheme:&quot;light&quot;,onEvent:function(){},offEvent:function(){},ready:function(){},HapticFeedback:{impactOccurred:function(s){H&amp;&amp;H.impactOccurred(s);return this},notificationOccurred:function(s){H&amp;&amp;H.notificationOccurred(s);return this},selectionChanged:function(){H&amp;&amp;H.selectionChanged();return this}},copyText:function(t){window.parent.postMessage({copy:t},&quot;*&quot;)},openLink:function(u){P?P.openLink(u):window.open(u)},openTelegramLink:function(u){P?P.openTelegramLink(u):window.open(u)}};})();</script><!-- Виджет «Мои задачи»: чек-лист с кольцом прогресса. В демо отметки хранятся на устройстве (localStorage сообщения). -->
+<style>
+  body { margin: 0; padding: 12px 12px max(12px, env(safe-area-inset-bottom)); }
+  .head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .ring { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+  .ring span { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--tg-theme-bg-color); }
+  h3 { margin: 0; font-size: 16px; }
+  .sub { color: var(--tg-theme-hint-color); font-size: 13px; }
+  .task { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 4px; background: none; color: var(--tg-theme-text-color); text-align: left; border-top: 1px solid var(--tg-theme-section-separator-color); border-radius: 0; font-size: 14px; }
+  .box { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--tg-theme-hint-color); display: grid; place-items: center; color: #fff; font-size: 13px; transition: all .2s; }
+  .done .box { background: #1f9d55; border-color: #1f9d55; }
+  .done .name { color: var(--tg-theme-hint-color); text-decoration: line-through; }
+  .name { flex: 1; }
+  .due { font-size: 12px; color: var(--tg-theme-hint-color); }
+  .late { color: var(--tg-theme-destructive-text-color); font-weight: 600; }
+  .soon { color: #e8890c; font-weight: 600; }
+  .party { text-align: center; font-size: 14px; padding: 6px 0 0; }
+</style>
+<div class=&quot;head&quot;>
+  <div class=&quot;ring&quot; id=&quot;ring&quot;><span id=&quot;pct&quot;></span></div>
+  <div><h3>Мои задачи</h3><div class=&quot;sub&quot; id=&quot;sub&quot;></div></div>
+</div>
+<div id=&quot;list&quot;></div>
+<div class=&quot;party&quot; id=&quot;party&quot;></div>
+<script>
+  const W = window.TelegramWidget;
+  let tasks = [];
+  let done = {};
+  try { tasks = JSON.parse(W.chatData) || []; } catch (e) {}
+  try { done = JSON.parse(localStorage.getItem('done')) || {}; } catch (e) {}
+  function render() {
+    const n = tasks.filter((t, i) => done[i]).length;
+    const p = tasks.length ? Math.round(n / tasks.length * 100) : 0;
+    document.getElementById('ring').style.background = `conic-gradient(#1f9d55 ${p * 3.6}deg, var(--tg-theme-secondary-bg-color) 0)`;
+    document.getElementById('pct').textContent = `${p}%`;
+    document.getElementById('sub').textContent = `${n} из ${tasks.length} готово`;
+    document.getElementById('list').innerHTML = tasks.map((t, i) =>
+      `<button class=&quot;task ${done[i] ? 'done' : ''}&quot; data-i=&quot;${i}&quot;><span class=&quot;box&quot;>${done[i] ? '✓' : ''}</span>` +
+      `<span class=&quot;name&quot;>${t[0]}</span><span class=&quot;due ${t[2] || ''}&quot;>${t[1] || ''}</span></button>`).join('');
+    document.getElementById('party').textContent = n &amp;&amp; n === tasks.length ? '🎉 Всё сделано!' : '';
+  }
+  document.getElementById('list').addEventListener('click', e => {
+    const b = e.target.closest('[data-i]');
+    if (!b) return;
+    done[b.dataset.i] = !done[b.dataset.i];
+    try { localStorage.setItem('done', JSON.stringify(done)); } catch (err) {}
+    W.HapticFeedback.impactOccurred(done[b.dataset.i] ? 'medium' : 'light');
+    render();
+  });
+  render();
+  W.ready();
+</script>
+" onload="fit(this)"></iframe><div class="cap">W3. Мои задачи — отмечай галочки</div></div><div class="msg"><iframe srcdoc="<!doctype html><meta charset=utf-8><style>:root{--tg-theme-bg-color:#fff;--tg-theme-text-color:#15181d;--tg-theme-hint-color:#8a9099;--tg-theme-button-color:#2f7fd8;--tg-theme-button-text-color:#fff;--tg-theme-secondary-bg-color:#eef1f5;--tg-theme-section-separator-color:#e3e6ea;--tg-theme-destructive-text-color:#e5484d}body{font:15px/1.35 -apple-system,Roboto,sans-serif;color:var(--tg-theme-text-color);margin:8px 12px}button{font:inherit;font-size:14px;font-weight:600;border:0;border-radius:10px;padding:9px 10px;background:var(--tg-theme-secondary-bg-color);color:var(--tg-theme-button-color)}</style><script>(function(){var P=window.parent.Telegram&amp;&amp;window.parent.Telegram.WebApp;var H=P&amp;&amp;P.HapticFeedback;var noop=function(){return this};window.TelegramWidget={chatData:&quot;{\&quot;votes\&quot;:[[\&quot;Кирилл\&quot;,\&quot;Катя\&quot;],[\&quot;Маша\&quot;],[]]}&quot;,publicData:null,colorScheme:&quot;light&quot;,onEvent:function(){},offEvent:function(){},ready:function(){},HapticFeedback:{impactOccurred:function(s){H&amp;&amp;H.impactOccurred(s);return this},notificationOccurred:function(s){H&amp;&amp;H.notificationOccurred(s);return this},selectionChanged:function(){H&amp;&amp;H.selectionChanged();return this}},copyText:function(t){window.parent.postMessage({copy:t},&quot;*&quot;)},openLink:function(u){P?P.openLink(u):window.open(u)},openTelegramLink:function(u){P?P.openTelegramLink(u):window.open(u)}};})();</script><!-- Виджет «Кто едет?»: живые полоски голосов. В демо голос учитывается на устройстве; в рабочей версии — через бота. -->
+<style>
+  body { margin: 0; padding: 12px 12px max(12px, env(safe-area-inset-bottom)); }
+  h3 { margin: 0 0 2px; font-size: 16px; }
+  .sub { color: var(--tg-theme-hint-color); font-size: 13px; margin-bottom: 10px; }
+  .opt { position: relative; display: flex; align-items: center; gap: 8px; width: 100%; margin-bottom: 6px; padding: 10px 12px; border-radius: 12px; background: var(--tg-theme-secondary-bg-color); color: var(--tg-theme-text-color); overflow: hidden; text-align: left; font-size: 14px; }
+  .fill { position: absolute; inset: 0 auto 0 0; background: rgba(59,130,246,.18); transition: width .5s ease-out; }
+  .opt.me .fill { background: rgba(31,157,85,.25); }
+  .opt span { position: relative; }
+  .opt .n { margin-left: auto; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .who { position: relative; font-size: 12px; color: var(--tg-theme-hint-color); }
+</style>
+<h3>🚗 Кто едет в ГУГА?</h3>
+<div class=&quot;sub&quot;>27.11, ярмарка вакансий · нужно 3 человека</div>
+<div id=&quot;opts&quot;></div>
+<script>
+  const W = window.TelegramWidget;
+  const OPTS = ['Еду', 'Пока не знаю', 'Не смогу'];
+  let base = { votes: [[], [], []] };
+  try { base = JSON.parse(W.chatData) || base; } catch (e) {}
+  let mine = null;
+  try { mine = JSON.parse(localStorage.getItem('vote')); } catch (e) {}
+  function render() {
+    const votes = base.votes.map((v, i) => (mine === i ? v.concat('Ты') : v));
+    const total = votes.reduce((s, v) => s + v.length, 0) || 1;
+    document.getElementById('opts').innerHTML = OPTS.map((o, i) =>
+      `<button class=&quot;opt ${mine === i ? 'me' : ''}&quot; data-i=&quot;${i}&quot;><i class=&quot;fill&quot; style=&quot;width:${votes[i].length / total * 100}%&quot;></i>` +
+      `<span>${mine === i ? '✓ ' : ''}${o}<br><span class=&quot;who&quot;>${votes[i].join(', ')}</span></span><span class=&quot;n&quot;>${votes[i].length}</span></button>`).join('');
+  }
+  document.getElementById('opts').addEventListener('click', e => {
+    const b = e.target.closest('[data-i]');
+    if (!b) return;
+    const i = Number(b.dataset.i);
+    mine = mine === i ? null : i;
+    try { localStorage.setItem('vote', JSON.stringify(mine)); } catch (err) {}
+    W.HapticFeedback.selectionChanged();
+    render();
+  });
+  render();
+  W.ready();
+</script>
+" onload="fit(this)"></iframe><div class="cap">W4. Кто едет? — голосуй</div></div><div class=t id=t></div><script>var tg=window.Telegram&&Telegram.WebApp;tg&&tg.ready();tg&&tg.expand();function fit(f){var b=f.contentDocument.body;var r=function(){f.style.height=(b.scrollHeight+16)+"px"};r();new ResizeObserver(r).observe(b)}addEventListener("message",function(e){if(e.data&&e.data.copy){navigator.clipboard&&navigator.clipboard.writeText(e.data.copy);var t=document.getElementById("t");t.textContent="Скопировано: "+e.data.copy;t.style.display="block";setTimeout(function(){t.style.display="none"},2000)}})</script></body></html>
