@@ -40,6 +40,8 @@ async function init() {
   if (tg) {
     tg.ready();
     tg.expand();
+    // Иначе прокрутка формы вниз сворачивает всё приложение
+    if (tg.isVersionAtLeast('7.7')) tg.disableVerticalSwipes();
     document.documentElement.dataset.scheme = tg.colorScheme;
     tg.onEvent('themeChanged', () => { document.documentElement.dataset.scheme = tg.colorScheme; });
   }
@@ -186,16 +188,31 @@ function renderTasks() {
 }
 
 function taskRow(t) {
-  const shown = t.assignees.slice(0, 3).map(pid => avatar(person(pid))).join('');
+  const shown = t.assignees.slice(0, 3)
+    .map(pid => avatar(person(pid), isGroup(t) && t.done_by.includes(pid) ? 'ok' : '')).join('');
   const more = t.assignees.length > 3 ? `<span class="ava more">+${t.assignees.length - 3}</span>` : '';
+  const progress = isGroup(t) ? `<span class="progress">✓ ${t.done_by.length}/${t.assignees.length}</span>` : '';
+  // В групповой задаче галочка — моя личная отметка, в обычной — вся задача
+  const tick = ownPart(t)
+    ? (t.done_by.includes(state.me.pid) ? 'on' : t.done_by.length ? 'doing' : '')
+    : (t.status === 'done' ? 'on' : t.status);
   return `
     <div class="card task ${t.status}">
-      <button class="tick ${t.status === 'done' ? 'on' : t.status}" data-action="toggle-task" data-id="${t.id}" aria-label="Готово">${CHECK_ICON}</button>
+      <button class="tick ${tick}" data-action="toggle-task" data-id="${t.id}" aria-label="Готово">${CHECK_ICON}</button>
       <button class="task-main" data-action="open-task" data-id="${t.id}">
         <div class="task-title">${esc(t.title)}</div>
-        ${t.deadline || t.assignees.length ? `<div class="task-meta">${dueLabel(t)}${shown || more ? `<span class="avatars">${shown}${more}</span>` : ''}</div>` : ''}
+        ${t.deadline || t.assignees.length ? `<div class="task-meta">${dueLabel(t)}${progress}${shown || more ? `<span class="avatars">${shown}${more}</span>` : ''}</div>` : ''}
       </button>
     </div>`;
+}
+
+function isGroup(t) {
+  return t.assignees.length > 1;
+}
+
+/** Групповая задача, где я среди ответственных: отмечаю только свою часть. */
+function ownPart(t) {
+  return isGroup(t) && t.assignees.includes(state.me.pid);
 }
 
 function dueLabel(t) {
@@ -270,10 +287,19 @@ function meetingForm(m) {
 
 function taskForm(t) {
   const isNew = !t;
-  t = t || { title: '', description: '', assignees: [], deadline: '', status: 'todo' };
+  t = t || { title: '', description: '', assignees: [], deadline: '', status: 'todo', done_by: [] };
+  const doneList = !isNew && isGroup(t) ? `
+    <div class="field"><span>Кто выполнил · ${t.done_by.length} из ${t.assignees.length}</span>
+      <div class="done-list">${t.assignees.map(pid => `<div>${avatar(person(pid))}${esc(person(pid).name)}
+        <span class="mark ${t.done_by.includes(pid) ? 'ok' : ''}">${t.done_by.includes(pid) ? '✓ сделал(а)' : 'ещё нет'}</span></div>`).join('')}
+      </div>
+      ${ownPart(t) ? `<button class="btn" type="button" data-action="toggle-task" data-id="${t.id}">
+        ${t.done_by.includes(state.me.pid) ? 'Снять мою отметку' : '✓ Я выполнил(а) свою часть'}</button>` : ''}
+    </div>` : '';
   openSheet(`
     <form class="form" data-form="task" data-id="${t.id || ''}">
       <h2>${isNew ? 'Новая задача' : 'Задача'}</h2>
+      ${doneList}
       <label class="field"><span>Что сделать</span><input name="title" required maxlength="300" value="${esc(t.title)}" placeholder="Например, заказать мерч"></label>
       <label class="field"><span>Подробности</span><textarea name="description" maxlength="2000">${esc(t.description)}</textarea></label>
       <label class="field"><span>Срок</span><input type="date" name="deadline" value="${t.deadline}"></label>
@@ -376,14 +402,26 @@ function selectDay(key) {
 
 async function toggleTask(id) {
   const t = state.tasks.find(x => x.id === id);
-  const prev = t.status;
-  t.status = prev === 'done' ? 'todo' : 'done';
+  const prev = { status: t.status, done_by: t.done_by };
+  const own = ownPart(t);
+  if (own) {
+    const me = state.me.pid;
+    t.done_by = t.done_by.includes(me) ? t.done_by.filter(pid => pid !== me) : [...t.done_by, me];
+    t.status = t.done_by.length === t.assignees.length ? 'done' : 'doing';
+  } else {
+    t.status = prev.status === 'done' ? 'todo' : 'done';
+  }
   haptic('light');
+  if (!$('#sheet').hidden) closeSheet();
   render();
   try {
-    upsert(state.tasks, (await api('saveTask', Object.assign({}, t, { notify: false }))).item);
+    const res = own
+      ? await api('toggleDone', { id })
+      : await api('saveTask', Object.assign({}, t, { notify: false }));
+    upsert(state.tasks, res.item);
+    render();
   } catch (e) {
-    t.status = prev;
+    Object.assign(t, prev);
     render();
     toast(e.message);
   }
@@ -421,7 +459,8 @@ async function busy(form, fn) {
 // ---------- Шторка, тосты, Telegram ----------
 
 function openSheet(html) {
-  $('#sheet-panel').innerHTML = html;
+  $('#sheet-panel').innerHTML = `<button class="sheet-close" data-action="close-sheet" aria-label="Закрыть">
+    <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>${html}`;
   $('#sheet-panel').scrollTop = 0;
   $('#sheet').hidden = false;
   document.body.style.overflow = 'hidden';
@@ -528,10 +567,10 @@ function kv(icon, value, raw) {
   return `<div><span class="k">${icon}</span><span class="v">${raw ? value : esc(value)}</span></div>`;
 }
 
-function avatar(p) {
+function avatar(p, cls = '') {
   const letters = p.name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?';
   const color = AVATAR_COLORS[[...p.pid].reduce((h, c) => h + c.charCodeAt(0), 0) % AVATAR_COLORS.length];
-  return `<span class="ava" style="background:${color}">${esc(letters)}</span>`;
+  return `<span class="ava ${cls}" style="background:${color}">${esc(letters)}</span>`;
 }
 
 function linkify(text) {

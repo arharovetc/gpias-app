@@ -28,11 +28,11 @@
         description: '', participants: ['p5', 'p7'], created_by: 'p5' },
     ],
     tasks: [
-      { id: 'k1', title: 'Заказать мерч на ярмарку ГУАП', description: 'Шопперы, значки, бутылки', assignees: ['p1', 'p8'],
-        deadline: day(1), status: 'doing', created_by: 'p4' },
-      { id: 'k2', title: 'Фотоотчёт с МБИ', description: '', assignees: ['p4'], deadline: day(3), status: 'todo', created_by: 'p1' },
-      { id: 'k3', title: 'Обновить реестр поездок', description: '', assignees: ['p1'], deadline: day(-2), status: 'todo', created_by: 'p2' },
-      { id: 'k4', title: 'Пост про СПБГИК', description: '', assignees: ['p3', 'p7'], deadline: day(-5), status: 'done', created_by: 'p1' },
+      { id: 'k1', title: 'Заказать мерч на ярмарку ГУАП', description: 'Шопперы, значки, бутылки', assignees: ['p1', 'p8', 'p2'],
+        deadline: day(1), status: 'doing', created_by: 'p4', done_by: ['p8'] },
+      { id: 'k2', title: 'Фотоотчёт с МБИ', description: '', assignees: ['p4'], deadline: day(3), status: 'todo', created_by: 'p1', done_by: [] },
+      { id: 'k3', title: 'Обновить реестр поездок', description: '', assignees: ['p1'], deadline: day(-2), status: 'todo', created_by: 'p2', done_by: [] },
+      { id: 'k4', title: 'Пост про СПБГИК', description: '', assignees: ['p3', 'p7'], deadline: day(-5), status: 'done', created_by: 'p1', done_by: ['p3', 'p7'] },
     ],
   };
 
@@ -54,9 +54,20 @@
         if (!p.date) throw new Error('Укажите дату');
         return save('meetings', p, { title: p.title.trim(), date: p.date, start: p.start || '', end: p.end || '',
           place: p.place || '', description: p.description || '', participants: p.participants || [] });
-      case 'saveTask':
-        return save('tasks', p, { title: p.title.trim(), description: p.description || '', assignees: p.assignees || [],
-          deadline: p.deadline || '', status: p.status || 'todo' });
+      case 'saveTask': {
+        const old = db.tasks.find(x => x.id === p.id);
+        const assignees = p.assignees || [];
+        return save('tasks', p, { title: p.title.trim(), description: p.description || '', assignees,
+          deadline: p.deadline || '', status: p.status || 'todo',
+          done_by: (old ? old.done_by : []).filter(pid => assignees.includes(pid)) });
+      }
+      case 'toggleDone': {
+        const t = db.tasks.find(x => x.id === p.id);
+        const me = db.me.pid;
+        t.done_by = t.done_by.includes(me) ? t.done_by.filter(x => x !== me) : t.assignees.filter(x => x === me || t.done_by.includes(x));
+        t.status = t.done_by.length === t.assignees.length ? 'done' : 'doing';
+        return { item: clone(t) };
+      }
       case 'deleteMeeting': db.meetings = db.meetings.filter(x => x.id !== p.id); return { id: p.id };
       case 'deleteTask': db.tasks = db.tasks.filter(x => x.id !== p.id); return { id: p.id };
       default: throw new Error(`Неизвестное действие: ${action}`);
